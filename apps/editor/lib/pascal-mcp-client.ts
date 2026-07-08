@@ -66,7 +66,9 @@ export class PascalMcpClient {
     }
 
     if (payload?.error) {
-      throw new Error(`MCP "${method}" error: ${payload.error.message ?? JSON.stringify(payload.error)}`)
+      throw new Error(
+        `MCP "${method}" error: ${payload.error.message ?? JSON.stringify(payload.error)}`,
+      )
     }
 
     return payload?.result

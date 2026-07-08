@@ -4,8 +4,8 @@ import { Editor, ItemsPanel } from '@pascal-app/editor'
 import { Hammer, Layers, Package, Settings, Sparkles } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
+import AiPanel from '@/components/ ai-panel'
 import { BuildTab } from '@/components/build-tab'
-import  AiPanel  from '@/components/ ai-panel'
 import {
   CommunityViewerToolbarLeft,
   CommunityViewerToolbarRight,
@@ -68,13 +68,13 @@ const SIDEBAR_TABS = [
     ),
   },
   {
-    id: "ai",
-    label: "Ask AI",
+    id: 'ai',
+    label: 'Ask AI',
     component: AiPanel,
     mobileDefaultSnap: 0.5,
-    mobileIcon: <Sparkles className="h-5 w-5"/>,
-    icon: <Sparkles className="h-7 w-7"/>
-},
+    mobileIcon: <Sparkles className="h-5 w-5" />,
+    icon: <Sparkles className="h-7 w-7" />,
+  },
   {
     id: 'settings',
     label: 'Settings',

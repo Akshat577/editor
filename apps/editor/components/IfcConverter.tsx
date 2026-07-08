@@ -1,10 +1,10 @@
 'use client'
 
 import { convertIfcToPascal, type PascalSceneGraph } from '@pascal-app/ifc-converter'
+import { Check, Download, FileJson, MessageSquare, Play, UploadCloud, X } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { UploadCloud, FileJson, Download, Play, X, Search, Check, MessageSquare } from 'lucide-react'
 
 const PascalViewer = dynamic(() => import('./PascalSceneViewer'), { ssr: false })
 
@@ -234,7 +234,7 @@ export default function IfcConverter() {
       if (!response.ok) {
         throw new Error(`Failed to create scene: ${response.status}`)
       }
-      const meta = await response.json() as { id: string }
+      const meta = (await response.json()) as { id: string }
       router.push(`/scene/${meta.id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to redirect to editor')
@@ -256,10 +256,9 @@ export default function IfcConverter() {
           </span>
         </div>
         <p className="text-white/60 leading-relaxed text-sm max-w-3xl">
-          Drop an IFC building model and it will turn it into a scene you can edit. Mapping is a work in progress — expect rough edges.
+          Drop an IFC building model and it will turn it into a scene you can edit. Mapping is a
+          work in progress — expect rough edges.
         </p>
-
-     
       </div>
 
       {/* Upload Drag/Drop Box */}
@@ -279,7 +278,8 @@ export default function IfcConverter() {
             <UploadCloud className="w-8 h-8" />
           </div>
           <p className="text-sm font-semibold text-white mt-1">
-            Drop an IFC file here, or <span className="text-blue-500 hover:text-blue-400">browse</span>
+            Drop an IFC file here, or{' '}
+            <span className="text-blue-500 hover:text-blue-400">browse</span>
           </p>
           <p className="text-xs text-white/40">
             Up to 100 MB. Files are saved so we can investigate conversion issues.
@@ -302,7 +302,9 @@ export default function IfcConverter() {
           {pascalData && (
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <h2 className="text-lg font-bold text-white truncate max-w-xs md:max-w-md">{fileName}</h2>
+                <h2 className="text-lg font-bold text-white truncate max-w-xs md:max-w-md">
+                  {fileName}
+                </h2>
                 <span className="text-xs text-white/60 bg-white/5 border border-white/5 px-2 py-0.5 rounded-full font-medium">
                   {Object.keys(pascalData.nodes).length} nodes
                 </span>
@@ -370,9 +372,12 @@ export default function IfcConverter() {
               {pascalData && (
                 <PascalViewer sceneGraph={pascalData} onSelectNode={setSelectedNodeId} />
               )}
-              {!pascalData && <div className="w-full h-[600px] bg-[#141414] border border-white/5 rounded-2xl" />}
+              {!pascalData && (
+                <div className="w-full h-[600px] bg-[#141414] border border-white/5 rounded-2xl" />
+              )}
               <p className="text-[11px] text-white/40 mt-2 text-center">
-                Orbit (left click) / Pan (right click) / Zoom (scroll) / Click elements to inspect properties
+                Orbit (left click) / Pan (right click) / Zoom (scroll) / Click elements to inspect
+                properties
               </p>
             </div>
 
@@ -387,7 +392,10 @@ export default function IfcConverter() {
                 const Row = ({ k, v }: { k: string; v: string }) => (
                   <div className="flex justify-between text-xs py-1 gap-4 border-b border-white/5">
                     <span className="text-white/40 shrink-0 font-medium">{k}</span>
-                    <span className="text-white font-mono text-right truncate max-w-[160px]" title={v}>
+                    <span
+                      className="text-white font-mono text-right truncate max-w-[160px]"
+                      title={v}
+                    >
                       {v}
                     </span>
                   </div>
@@ -407,19 +415,16 @@ export default function IfcConverter() {
                     </div>
 
                     <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-white/30 uppercase tracking-wider mb-2">Metadata</p>
+                      <p className="text-[10px] font-bold text-white/30 uppercase tracking-wider mb-2">
+                        Metadata
+                      </p>
                       <Row k="Type" v={node.type} />
                       {meta.typeName && <Row k="Type Name" v={meta.typeName} />}
                       {meta.ifcType && <Row k="IFC Type" v={meta.ifcType} />}
                       {meta.globalId && <Row k="Global ID" v={meta.globalId} />}
-                      {meta.expressID != null && (
-                        <Row k="Express ID" v={String(meta.expressID)} />
-                      )}
+                      {meta.expressID != null && <Row k="Express ID" v={String(meta.expressID)} />}
                       {meta.levelId && (
-                        <Row
-                          k="Level"
-                          v={pascalData!.nodes[meta.levelId]?.name ?? meta.levelId}
-                        />
+                        <Row k="Level" v={pascalData!.nodes[meta.levelId]?.name ?? meta.levelId} />
                       )}
                     </div>
 
@@ -478,9 +483,7 @@ export default function IfcConverter() {
                           <Row
                             key={i}
                             k={l.name}
-                            v={
-                              l.thickness != null ? `${(l.thickness * 1000).toFixed(0)} mm` : '-'
-                            }
+                            v={l.thickness != null ? `${(l.thickness * 1000).toFixed(0)} mm` : '-'}
                           />
                         ))}
                       </div>
