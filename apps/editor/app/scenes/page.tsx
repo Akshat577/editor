@@ -1,8 +1,8 @@
+import { ArrowRight, FileUp, Settings } from 'lucide-react'
 import { headers } from 'next/headers'
 import Link from 'next/link'
-import type { SceneMeta } from '@/components/scene-loader'
 import DashboardLayout from '@/components/DashboardLayout'
-import { FileUp, Settings, ArrowRight } from 'lucide-react'
+import type { SceneMeta } from '@/components/scene-loader'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,11 +57,12 @@ export default async function ScenesPage() {
   return (
     <DashboardLayout activeTab="scenes">
       <div className="max-w-5xl mx-auto px-8 py-12 space-y-10">
-        
         {/* Pick up where you left off */}
         <div className="space-y-4">
-          <h2 className="text-2xl font-bold text-white tracking-tight">Pick up where you left off</h2>
-          
+          <h2 className="text-2xl font-bold text-white tracking-tight">
+            Pick up where you left off
+          </h2>
+
           {scenes.length === 0 ? (
             <div className="rounded-2xl border border-white/5 border-dashed bg-[#151515] p-12 text-center">
               <p className="text-white/40 text-sm">You haven&apos;t created any scenes yet.</p>
@@ -85,14 +86,14 @@ export default async function ScenesPage() {
                       ) : (
                         <span className="text-white/30 text-xs">No thumbnail</span>
                       )}
-                      
+
                       {/* Public/Private Badge */}
                       <span className="absolute top-3 left-3 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-black/60 backdrop-blur text-white/80 border border-white/5">
                         Private
                       </span>
-                      
+
                       {/* Cog icon on top right */}
-                      <button 
+                      <button
                         type="button"
                         onClick={(e) => {
                           e.preventDefault()
@@ -133,7 +134,8 @@ export default async function ScenesPage() {
                 </span>
               </div>
               <p className="text-xs text-white/55 leading-relaxed max-w-xl">
-                Drop an IFC building model and turn it into a Pascal scene you can edit. Mapping is rough — your files help us improve it.
+                Drop an IFC building model and turn it into a Pascal scene you can edit. Mapping is
+                rough — your files help us improve it.
               </p>
             </div>
           </div>
@@ -154,17 +156,20 @@ export default async function ScenesPage() {
               {
                 title: 'Starter House',
                 desc: 'A simple single-story residential home with a garage.',
-                thumbnail: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=400&q=80',
+                thumbnail:
+                  'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=400&q=80',
               },
               {
                 title: '01-duplex (IFC)',
                 desc: 'A modern multi-level apartment building converted from IFC.',
-                thumbnail: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=400&q=80',
+                thumbnail:
+                  'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=400&q=80',
               },
               {
                 title: 'Ifc4_SampleHouse (IFC)',
                 desc: 'Standard buildingSMART house model with detailed wall layers.',
-                thumbnail: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=400&q=80',
+                thumbnail:
+                  'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=400&q=80',
               },
             ].map((proj) => (
               <div
@@ -183,9 +188,7 @@ export default async function ScenesPage() {
                   </span>
                 </div>
                 <div className="mt-3">
-                  <h3 className="font-bold text-sm text-white">
-                    {proj.title}
-                  </h3>
+                  <h3 className="font-bold text-sm text-white">{proj.title}</h3>
                   <p className="mt-1 text-white/40 text-xs leading-relaxed line-clamp-2">
                     {proj.desc}
                   </p>
@@ -194,7 +197,6 @@ export default async function ScenesPage() {
             ))}
           </div>
         </div>
-
       </div>
     </DashboardLayout>
   )

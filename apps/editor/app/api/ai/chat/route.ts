@@ -67,7 +67,9 @@ export async function POST(request: Request) {
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
       const result = await callGemini({ apiKey, systemInstruction, contents, declarations })
       const parts = result?.candidates?.[0]?.content?.parts ?? []
-      const functionCalls = parts.filter((part: GeminiPart): part is GeminiFunctionCallPart => 'functionCall' in part)
+      const functionCalls = parts.filter(
+        (part: GeminiPart): part is GeminiFunctionCallPart => 'functionCall' in part,
+      )
 
       if (functionCalls.length === 0) {
         finalReply = parts
@@ -116,9 +118,13 @@ function buildSystemInstruction(sceneId?: string, sceneLoadError?: string | null
       `A scene was supposed to be loaded (id "${sceneId}") but load_scene failed: ${sceneLoadError}. Tell the user this scene could not be loaded before doing anything else.`,
     )
   } else if (sceneId) {
-    lines.push(`Scene "${sceneId}" has already been loaded into the bridge for you via load_scene — do not call load_scene again unless the user asks to switch scenes.`)
+    lines.push(
+      `Scene "${sceneId}" has already been loaded into the bridge for you via load_scene — do not call load_scene again unless the user asks to switch scenes.`,
+    )
   } else {
-    lines.push('No scene ID was provided by the client. If a tool call needs a loaded scene and none exists, tell the user to open or create one first.')
+    lines.push(
+      'No scene ID was provided by the client. If a tool call needs a loaded scene and none exists, tell the user to open or create one first.',
+    )
   }
 
   lines.push(
@@ -155,7 +161,9 @@ async function callGemini(options: {
     body: JSON.stringify({
       contents: options.contents,
       systemInstruction: { parts: [{ text: options.systemInstruction }] },
-      tools: options.declarations.length ? [{ functionDeclarations: options.declarations }] : undefined,
+      tools: options.declarations.length
+        ? [{ functionDeclarations: options.declarations }]
+        : undefined,
     }),
   })
 

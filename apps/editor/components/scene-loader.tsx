@@ -14,9 +14,9 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import AiPanel from '@/components/ ai-panel'
 import { BuildTab } from './build-tab'
 import { CommunityViewerToolbarLeft, CommunityViewerToolbarRight } from './viewer-toolbar'
-import  AiPanel  from '@/components/ ai-panel'
 
 export interface SceneMeta {
   id: string

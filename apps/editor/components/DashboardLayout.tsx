@@ -1,6 +1,6 @@
 'use client'
 
-import { Layers, Globe, Package, Upload, Plus, ChevronsUpDown } from 'lucide-react'
+import { ChevronsUpDown, Globe, Layers, Package, Plus, Upload } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -44,7 +44,10 @@ export default function DashboardLayout({
       <aside className="w-[260px] shrink-0 border-r border-white/5 flex flex-col justify-between bg-[#151515]">
         <div>
           {/* Logo */}
-          <Link href="/scenes" className="flex items-center gap-3 px-6 py-6 font-bold text-xl tracking-tight text-white hover:opacity-90 transition-all">
+          <Link
+            href="/scenes"
+            className="flex items-center gap-3 px-6 py-6 font-bold text-xl tracking-tight text-white hover:opacity-90 transition-all"
+          >
             <div className="flex gap-1 items-end">
               <span className="w-1.5 h-6 bg-white rounded-full"></span>
               <span className="w-1.5 h-4 bg-white rounded-full"></span>
@@ -66,7 +69,7 @@ export default function DashboardLayout({
               <Layers className="h-4 w-4" />
               Create
             </Link>
-            
+
             <button
               disabled
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white/30 cursor-not-allowed text-left"
@@ -132,9 +135,7 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 min-h-screen bg-[#111111] overflow-y-auto">
-        {children}
-      </main>
+      <main className="flex-1 min-h-screen bg-[#111111] overflow-y-auto">{children}</main>
     </div>
   )
 }

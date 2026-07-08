@@ -124,7 +124,8 @@ export default function PascalSceneViewer({
   return (
     <div
       className={
-        className ?? 'relative w-full h-[600px] overflow-hidden rounded-2xl border border-white/10 bg-[#141414] shadow-inner'
+        className ??
+        'relative w-full h-[600px] overflow-hidden rounded-2xl border border-white/10 bg-[#141414] shadow-inner'
       }
     >
       <div className="pointer-events-none absolute top-4 left-1/2 z-10 -translate-x-1/2">
