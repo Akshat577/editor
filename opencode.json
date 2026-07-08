@@ -1,0 +1,15 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "pascal": {
+      "type": "local",
+      "command": [
+        "bun",
+        "/Users/akshat/Desktop/editor/packages/mcp/dist/bin/pascal-mcp.js"
+      ],
+      "environment": {
+        "PASCAL_DATA_DIR": "/Users/akshat/.pascal/data"
+      }
+    }
+  }
+}
