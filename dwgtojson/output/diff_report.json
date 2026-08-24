@@ -1,0 +1,68 @@
+{
+  "added": [
+    {
+      "type": "MTEXT",
+      "layer": "DIM",
+      "structural_relevance": "low",
+      "raw": {
+        "type": "MTEXT",
+        "layer": "DIM",
+        "text": "",
+        "position": [
+          409627.469720229,
+          -552964.5828375785,
+          0.0
+        ]
+      }
+    },
+    {
+      "type": "MTEXT",
+      "layer": "DIM",
+      "structural_relevance": "low",
+      "raw": {
+        "type": "MTEXT",
+        "layer": "DIM",
+        "text": "",
+        "position": [
+          414880.4447996672,
+          -552182.3225843767,
+          0.0
+        ]
+      }
+    }
+  ],
+  "removed": [
+    {
+      "type": "MTEXT",
+      "layer": "DIM",
+      "structural_relevance": "low",
+      "raw": {
+        "type": "MTEXT",
+        "layer": "DIM",
+        "text": "",
+        "position": [
+          409627.469720229,
+          -552964.5828375785,
+          0.0
+        ]
+      }
+    },
+    {
+      "type": "MTEXT",
+      "layer": "DIM",
+      "structural_relevance": "low",
+      "raw": {
+        "type": "MTEXT",
+        "layer": "DIM",
+        "text": "",
+        "position": [
+          414880.4447996672,
+          -552182.3225843767,
+          0.0
+        ]
+      }
+    }
+  ],
+  "modified": [],
+  "unchanged_count": 563
+}

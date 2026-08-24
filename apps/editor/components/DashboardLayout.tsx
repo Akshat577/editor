@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronsUpDown, Globe, Layers, Package, Plus, Upload } from 'lucide-react'
+import { ChevronsUpDown, Globe, Layers, Package, Plus, Sparkles, Upload } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -15,7 +15,7 @@ export default function DashboardLayout({
   activeTab,
 }: {
   children: React.ReactNode
-  activeTab: 'scenes' | 'ifc'
+  activeTab: 'scenes' | 'ifc' | 'dwg'
 }) {
   const router = useRouter()
   const [isCreating, setIsCreating] = useState(false)
@@ -100,6 +100,23 @@ export default function DashboardLayout({
               </div>
               <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">
                 Alpha
+              </span>
+            </Link>
+
+            <Link
+              href="/dwg"
+              className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                activeTab === 'dwg'
+                  ? 'bg-white/10 text-white shadow-sm'
+                  : 'text-white/60 hover:bg-white/5 hover:text-white/90'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Sparkles className="h-4 w-4 text-purple-400" />
+                DWG Structural AI
+              </div>
+              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 animate-pulse">
+                New
               </span>
             </Link>
           </nav>

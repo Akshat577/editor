@@ -186,6 +186,12 @@ function transformPoint3(m: Mat4, p: number[]): number[] {
   ]
 }
 
+// NOTE on matrix convention used by resolveWorldTransform/buildAxis2Placement3DMatrix:
+// these build ROW-MAJOR matrices (m[0..3] is row 0, i.e. the local X axis
+// expressed in world space lives at m[0], m[4], m[8]). That is the same
+// convention transformPoint3 above assumes. This differs from the
+// COLUMN-MAJOR `flatTransformation` returned by web-ifc's GetFlatMesh
+// (used later in measureWallLocalExtents), so don't mix the two helpers.
 function buildAxis2Placement3DMatrix(
   ifcApi: WebIFC.IfcAPI,
   modelID: number,
@@ -284,6 +290,32 @@ function resolveWorldTransform(ifcApi: WebIFC.IfcAPI, modelID: number, placement
     result = multiply(result, mat)
   }
   return result
+}
+
+// Yaw (rotation about world-up, in radians) of a row-major world matrix
+// built by resolveWorldTransform/buildAxis2Placement3DMatrix above. Reads
+// the local X axis as expressed in world space — m[0]=xWorldX, m[4]=xWorldY
+// for this convention — and returns its angle in the XY plane. Used to give
+// vertical elements (columns) their real yaw instead of hardcoding 0.
+function computeYawFromMatrix(m: Mat4): number {
+  return Math.atan2(m[4], m[0])
+}
+
+// Angle (degrees) between an element's local Z axis (its extrusion /
+// "up" direction) and world-up, for a row-major matrix from
+// resolveWorldTransform. 0° = a true vertical member. Large values mean
+// the member is tilted or fully horizontal — e.g. a diagonal handrail or
+// stringer that Tekla still tags as IFCCOLUMN. A vertical prismatic
+// ColumnNode cannot represent those correctly regardless of rotation, so
+// callers use this to decide whether to skip the element instead of
+// rendering it as a mispositioned vertical post.
+function computeVerticalTiltDegrees(m: Mat4): number {
+  const zx = m[2]
+  const zy = m[6]
+  const zz = m[10]
+  const len = Math.sqrt(zx * zx + zy * zy + zz * zz) || 1
+  const cos = Math.min(1, Math.max(-1, zz / len))
+  return (Math.acos(cos) * 180) / Math.PI
 }
 
 // --- Geometry extraction helpers ---
@@ -644,6 +676,11 @@ export interface ConversionOptions {
   swapProfileDimensions?: boolean
   simplify?: boolean | IfcConversionSimplificationOptions
   label?: string
+  // Max degrees an IFCCOLUMN's local extrusion axis may tilt away from
+  // world-up before it's treated as a non-vertical member (handrail,
+  // diagonal stringer/rail, etc.) and skipped rather than rendered as a
+  // mispositioned vertical shaft. Default 15°.
+  maxColumnTiltDegrees?: number
 }
 
 export const VARIANT_PRESETS: Record<string, ConversionOptions> = {
@@ -670,6 +707,7 @@ export async function convertIfcToPascal(
     swapYZ: options?.swapYZ ?? true,
     extrusionDepthIsHeight: options?.extrusionDepthIsHeight ?? true,
     swapProfileDimensions: options?.swapProfileDimensions ?? false,
+    maxColumnTiltDegrees: options?.maxColumnTiltDegrees ?? 15,
   }
   const simplificationOptions =
     options?.simplify === false
@@ -701,6 +739,28 @@ export async function convertIfcToPascal(
   const parentMap = new Map<number, number>()
   const childrenMap = new Map<number, number[]>()
   const expressIdToNodeId = new Map<number, string>()
+
+  // Resolves the nearest ancestor of `expressId` that was actually
+  // converted into a Pascal node, walking up through `parentMap` as far
+  // as needed. This matters because many IFC exporters (Tekla in
+  // particular) insert intermediate containers — IfcElementAssembly,
+  // nested IfcGroup, etc. — between an element and its storey via
+  // IFCRELAGGREGATES. Those containers are never converted into Pascal
+  // nodes, so a naive single-hop `expressIdToNodeId.get(parentMap.get(id))`
+  // lookup returns undefined and the element ends up with parentId: null.
+  // Since it's then neither in rootNodeIds nor listed in anyone's
+  // `children`, it becomes an orphan the editor can never reach —
+  // present in `nodes`, but invisible. Walking the chain (same approach
+  // findStoreyForElement already uses for levelId) fixes that.
+  function findConvertedAncestor(expressId: number): string | null {
+    let current: number | undefined = parentMap.get(expressId)
+    for (let guard = 0; guard < 20 && current != null; guard++) {
+      const nodeId = expressIdToNodeId.get(current)
+      if (nodeId) return nodeId
+      current = parentMap.get(current)
+    }
+    return null
+  }
 
   progress('Analyzing spatial relationships...', 20)
 
@@ -846,8 +906,7 @@ export async function convertIfcToPascal(
     const nodeId = generateId('building')
     expressIdToNodeId.set(buildingExpressID, nodeId)
 
-    const parentExpressID = parentMap.get(buildingExpressID)
-    const parentNodeId = parentExpressID ? expressIdToNodeId.get(parentExpressID) : null
+    const parentNodeId = findConvertedAncestor(buildingExpressID)
 
     const buildingNode = tryParse(BuildingNode, 'building', {
       object: 'node',
@@ -870,6 +929,8 @@ export async function convertIfcToPascal(
 
     if (parentNodeId && nodes[parentNodeId]) {
       ;(nodes[parentNodeId] as any).children?.push(nodeId)
+    } else if (!parentNodeId) {
+      rootNodeIds.push(nodeId)
     }
   }
 
@@ -884,8 +945,7 @@ export async function convertIfcToPascal(
     const nodeId = generateId('level')
     expressIdToNodeId.set(storeyExpressID, nodeId)
 
-    const parentExpressID = parentMap.get(storeyExpressID)
-    const parentNodeId = parentExpressID ? expressIdToNodeId.get(parentExpressID) : null
+    const parentNodeId = findConvertedAncestor(storeyExpressID)
 
     // Resolve storey elevation from placement chain
     let elevation = storey.Elevation?.value ?? 0
@@ -922,6 +982,8 @@ export async function convertIfcToPascal(
 
     if (parentNodeId && nodes[parentNodeId]) {
       ;(nodes[parentNodeId] as any).children?.push(nodeId)
+    } else if (!parentNodeId) {
+      rootNodeIds.push(nodeId)
     }
   }
 
@@ -978,8 +1040,7 @@ export async function convertIfcToPascal(
       const nodeId = generateId('wall')
       expressIdToNodeId.set(wallExpressID, nodeId)
 
-      const parentExpressID = parentMap.get(wallExpressID)
-      const parentNodeId = parentExpressID ? expressIdToNodeId.get(parentExpressID) : null
+      const parentNodeId = findConvertedAncestor(wallExpressID)
 
       let start: [number, number] = [0, 0]
       let end: [number, number] | null = null
@@ -1102,6 +1163,8 @@ export async function convertIfcToPascal(
 
       if (parentNodeId && nodes[parentNodeId]) {
         ;(nodes[parentNodeId] as any).children?.push(nodeId)
+      } else if (!parentNodeId) {
+        rootNodeIds.push(nodeId)
       }
     }
   }
@@ -1373,12 +1436,11 @@ export async function convertIfcToPascal(
       const hosted = scene ? findHostWall(scene[0], scene[1], effWidth) : null
 
       // When hosted, parent to (and live inside) the wall — same as the
-      // void/fill path. Otherwise fall back to the spatial container.
-      const containerExpressID = parentMap.get(fillId)
-      const containerNodeId = containerExpressID
-        ? (expressIdToNodeId.get(containerExpressID) ?? null)
-        : null
-      const parentNodeId = hosted ? hosted.info.nodeId : containerNodeId
+      // void/fill path. Otherwise fall back to the nearest converted
+      // ancestor of the element's spatial container (walking through
+      // any intermediate assembly/group entities), so it still ends up
+      // reachable from a root instead of becoming an orphan.
+      const parentNodeId = hosted ? hosted.info.nodeId : findConvertedAncestor(fillId)
 
       if (isDoor) {
         const h = height ?? 2.1
@@ -1406,6 +1468,8 @@ export async function convertIfcToPascal(
         nodes[nodeId] = doorNode
         if (parentNodeId && nodes[parentNodeId]) {
           ;(nodes[parentNodeId] as { children?: string[] }).children?.push(nodeId)
+        } else if (!parentNodeId) {
+          rootNodeIds.push(nodeId)
         }
       } else {
         const h = height ?? 1.2
@@ -1433,6 +1497,8 @@ export async function convertIfcToPascal(
         nodes[nodeId] = windowNode
         if (parentNodeId && nodes[parentNodeId]) {
           ;(nodes[parentNodeId] as { children?: string[] }).children?.push(nodeId)
+        } else if (!parentNodeId) {
+          rootNodeIds.push(nodeId)
         }
       }
     } catch {
@@ -1450,8 +1516,7 @@ export async function convertIfcToPascal(
     const nodeId = generateId('slab')
     expressIdToNodeId.set(slabExpressID, nodeId)
 
-    const parentExpressID = parentMap.get(slabExpressID)
-    const parentNodeId = parentExpressID ? expressIdToNodeId.get(parentExpressID) : null
+    const parentNodeId = findConvertedAncestor(slabExpressID)
 
     let polygon: [number, number][] | null = null
     let elevation = 0
@@ -1539,6 +1604,8 @@ export async function convertIfcToPascal(
 
     if (parentNodeId && nodes[parentNodeId]) {
       ;(nodes[parentNodeId] as any).children?.push(nodeId)
+    } else if (!parentNodeId) {
+      rootNodeIds.push(nodeId)
     }
   }
 
@@ -1552,8 +1619,7 @@ export async function convertIfcToPascal(
     const nodeId = generateId('stair')
     expressIdToNodeId.set(stairExpressID, nodeId)
 
-    const parentExpressID = parentMap.get(stairExpressID)
-    const parentNodeId = parentExpressID ? expressIdToNodeId.get(parentExpressID) : null
+    const parentNodeId = findConvertedAncestor(stairExpressID)
 
     let position: [number, number, number] = [0, 0, 0]
     let boundingBox: [number, number, number] | undefined
@@ -1644,6 +1710,8 @@ export async function convertIfcToPascal(
     nodes[nodeId] = stairNode
     if (parentNodeId && nodes[parentNodeId]) {
       ;(nodes[parentNodeId] as any).children?.push(nodeId)
+    } else if (!parentNodeId) {
+      rootNodeIds.push(nodeId)
     }
   }
 
@@ -1657,8 +1725,7 @@ export async function convertIfcToPascal(
     const nodeId = generateId('roof')
     expressIdToNodeId.set(roofExpressID, nodeId)
 
-    const parentExpressID = parentMap.get(roofExpressID)
-    const parentNodeId = parentExpressID ? expressIdToNodeId.get(parentExpressID) : null
+    const parentNodeId = findConvertedAncestor(roofExpressID)
 
     let polygon: [number, number][] | undefined
     let elevation: number | undefined
@@ -1734,10 +1801,13 @@ export async function convertIfcToPascal(
     nodes[nodeId] = roofNode
     if (parentNodeId && nodes[parentNodeId]) {
       ;(nodes[parentNodeId] as any).children?.push(nodeId)
+    } else if (!parentNodeId) {
+      rootNodeIds.push(nodeId)
     }
   }
 
   // Process columns
+  let skippedTiltedColumnCount = 0
   const columnTypes = [WebIFC.IFCCOLUMN]
   try {
     columnTypes.push(WebIFC.IFCCOLUMNSTANDARDCASE)
@@ -1756,18 +1826,15 @@ export async function convertIfcToPascal(
       if (expressIdToNodeId.has(colExpressID)) continue
 
       const col = ifcApi.GetLine(modelID, colExpressID)
-      const nodeId = generateId('column')
-      expressIdToNodeId.set(colExpressID, nodeId)
-
-      const parentExpressID = parentMap.get(colExpressID)
-      const parentNodeId = parentExpressID ? expressIdToNodeId.get(parentExpressID) : null
 
       let position: [number, number, number] = [0, 0, 0]
+      let rotationYaw = 0
       let width: number | undefined
       let depth: number | undefined
       let height: number | undefined
       let profileShape: 'round' | 'rectangular' | null = null
       let profileRadius: number | undefined
+      let tiltDeg = 0
 
       try {
         const worldMat = col.ObjectPlacement?.value
@@ -1775,6 +1842,8 @@ export async function convertIfcToPascal(
           : identity()
         const s = worldToScene(transformPoint3(worldMat, [0, 0, 0]))
         position = opts.swapYZ ? [s[0], s[2], s[1]] : [s[0], s[1], s[2]]
+        rotationYaw = computeYawFromMatrix(worldMat)
+        tiltDeg = computeVerticalTiltDegrees(worldMat)
 
         const body = getBodyExtrusionData(ifcApi, modelID, col)
         if (body.depth) height = body.depth * unitFactor
@@ -1790,6 +1859,24 @@ export async function convertIfcToPascal(
       } catch {
         /* keep defaults */
       }
+
+      // Many IFC exporters (Tekla especially) tag non-vertical steel
+      // members — diagonal handrails, stringers, angled rails — as
+      // IFCCOLUMN even though they're not architectural columns.
+      // Pascal's ColumnNode is a vertical prismatic shaft with a single
+      // yaw scalar; it has no way to represent a tilted or horizontal
+      // member. Rendering one anyway produces a straight vertical post
+      // sitting at the base point — visually wrong and worse than
+      // omitting it. Skip until Pascal has a generic linear-member node.
+      if (tiltDeg > opts.maxColumnTiltDegrees) {
+        skippedTiltedColumnCount++
+        continue
+      }
+
+      const nodeId = generateId('column')
+      expressIdToNodeId.set(colExpressID, nodeId)
+
+      const parentNodeId = findConvertedAncestor(colExpressID)
 
       // Structural IFC columns are plain shafts. The ColumnNode defaults
       // are decorative (round-rings base + simple capital + a necked
@@ -1819,6 +1906,10 @@ export async function convertIfcToPascal(
         height,
         crossSection: isRect ? 'rectangular' : 'round',
         radius: profileRadius ?? Math.max(width ?? 0.44, depth ?? 0.44) / 2,
+        // Real yaw from the IFC placement instead of a hardcoded 0 —
+        // previously every column lost its rotation about the vertical
+        // axis, which is wrong for anything not aligned to world X.
+        rotation: rotationYaw,
         style: 'plain',
         shaftProfile: 'straight',
         shaftStartScale: 1,
@@ -1838,8 +1929,19 @@ export async function convertIfcToPascal(
       nodes[nodeId] = columnNode
       if (parentNodeId && nodes[parentNodeId]) {
         ;(nodes[parentNodeId] as any).children?.push(nodeId)
+      } else if (!parentNodeId) {
+        rootNodeIds.push(nodeId)
       }
     }
+  }
+  if (skippedTiltedColumnCount > 0) {
+    console.warn(
+      `[IFC→Pascal] Skipped ${skippedTiltedColumnCount} non-vertical IFCCOLUMN element${
+        skippedTiltedColumnCount === 1 ? '' : 's'
+      } (tilt > ${opts.maxColumnTiltDegrees}°) — likely handrails/stringers/rails ` +
+        `mistagged as columns by the exporter. Pascal has no generic linear-member ` +
+        `node yet to represent them correctly.`,
+    )
   }
 
   // Beams: skipped for now — Pascal has no `beam` node type yet. When it
@@ -2076,6 +2178,33 @@ export async function convertIfcToPascal(
 
   progress('Building scene graph...', 95)
 
+  // Sanity check: verify every node is actually reachable by walking
+  // down from rootNodeIds through `children`. This is the same
+  // traversal the editor uses to render the tree, so anything that
+  // shows up here as unreachable would also render as nothing in the
+  // editor — even though it's sitting right there in `nodes`. This is
+  // exactly the failure mode Bug #1 (orphaned parentId) produced before
+  // findConvertedAncestor was introduced; kept as a guard so a future
+  // regression surfaces as a console warning instead of a silently
+  // blank model.
+  const reachable = new Set<string>()
+  const stack = [...rootNodeIds]
+  while (stack.length) {
+    const id = stack.pop()!
+    if (reachable.has(id)) continue
+    reachable.add(id)
+    const children = (nodes[id] as { children?: string[] })?.children ?? []
+    stack.push(...children)
+  }
+  const orphanIds = Object.keys(nodes).filter((id) => !reachable.has(id))
+  if (orphanIds.length > 0) {
+    console.warn(
+      `[IFC→Pascal] ${orphanIds.length} node(s) unreachable from rootNodeIds — these ` +
+        `will not render in the editor. First few:`,
+      orphanIds.slice(0, 10),
+    )
+  }
+
   const totalNodes = Object.keys(nodes).length
   console.log(`[IFC→Pascal] Conversion complete! Generated ${totalNodes} nodes`)
   console.log(`[IFC→Pascal] Node breakdown:`, {
@@ -2090,7 +2219,9 @@ export async function convertIfcToPascal(
     roofs: Object.values(nodes).filter((n) => n.type === 'roof').length,
     columns: Object.values(nodes).filter((n) => n.type === 'column').length,
     skippedBeams: skippedBeamCount,
+    skippedTiltedColumns: skippedTiltedColumnCount,
     skippedItems: skippedItemCount,
+    unreachableNodes: orphanIds.length,
   })
 
   progress('Complete!', 100)
